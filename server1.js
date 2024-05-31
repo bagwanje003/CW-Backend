@@ -18,16 +18,14 @@ app.use((req, res, next) => {
 });
 
 // Connect to MongoDB
-let db;
-const mongoUri = 'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/';
-MongoClient.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-    if (err) {
-        console.error('Failed to connect to MongoDB', err);
-        process.exit(1);
-    }
-    db = client.db('Coursework2');
-    console.log('Connected to MongoDB');
-});
+
+app.use(express.static(__dirname + "/static"))
+
+const{MongoClient, ObjectID} = require("mongodb");
+const client = new MongoClient(
+  'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/'
+);
+var db = cllient.db('Coursework2');
 
 // Logger Middleware
 app.use((req, res, next) => {
