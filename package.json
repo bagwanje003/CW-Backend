@@ -1,4 +1,10 @@
 {
+  "main": "server1.js",
+"scripts":{
+  "start": "node server1.js",
+  "test": "echo \"error: no test specified\" && exit 1"
+},
+
   "dependencies": {
     "express": "^4.19.2",
     "mongodb": "^6.7.0"

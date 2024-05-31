@@ -1,127 +1,139 @@
 // Import dependencies modules:
 const express = require('express');
-const { MongoClient, ObjectID } = require('mongodb');
+
 
 // Create an Express.js instance:
 const app = express();
 
 // Config Express.js
 app.use(express.json());
-app.set('port', 8000); // Update to match the listening port
+app.set('port', 3000); // Update to match the listening port
 
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers');
-    next();
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers');
+  next();
 });
 
 // Connect to MongoDB
-let db;
-const mongoUri = 'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/';
-MongoClient.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
-    if (err) {
-        console.error('Failed to connect to MongoDB', err);
-        process.exit(1);
-    }
-    db = client.db('Coursework2');
-    console.log('Connected to MongoDB');
+
+app.use(express.static(__dirname + "/static"))
+
+const { MongoClient, ObjectID } = require("mongodb");
+const client = new MongoClient(
+  'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/'
+);
+var db = cllient.db('Coursework2');
+
+// Logger Middleware
+app.use((req, res, next) => {
+  var log = `${req.ip} -- ${req.method} ${req.path} ${res.statusCode}"`;
+  console.log(log, req.body);
+  next();
 });
 
-// Route to select a collection
-app.get('/', (req, res) => {
-    res.send('Select a collection, e.g., /collection/messages');
+app.get("/", (req, res) => {
+  // db.collection('lessons').updateMany({}, { $set: { avaliability: 5 } });
+  res.send("Select a collection, e.g., /collection/lessons");
 });
 
-// Middleware to handle collectionName parameter
-app.param('collectionName', (req, res, next, collectionName) => {
-    req.collection = db.collection(collectionName);
-    return next();
-});
-
-// Retrieve all objects from a collection
-app.get('/collection/:collectionName', (req, res, next) => {
-    req.collection.find({}, { limit: 10, sort: [['price', -1]] }).toArray((err, results) => {
-        if (err) {
-            return next(err);
-        }
+// retrieve all the object from an collection
+app.get("/collection/:collectionName", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .find({})
+      .toArray()
+      .then((results) => {
         res.send(results);
-    });
+      });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
-// Add a new order and update spaces
-app.post('/collection/orders', async (req, res, next) => {
-    const order = req.body;
-    const session = db.startSession();
+// Search
+app.post("/search/collection/lessons/", (req, res) => {
+  try {
+    var search = req.body.search;
+    var sort = req.body.sort || "title";
+    var order = req.body.order == "desc" ? -1 : 1;
 
-    try {
-        session.startTransaction();
-
-        // Update spaces for each lesson
-        for (const lesson of order.lessons) {
-            const updateResult = await db.collection('lessons').updateOne(
-                { _id: new ObjectID(lesson._id) },
-                { $inc: { spaces: -lesson.spaces } },
-                { session }
-            );
-
-            if (updateResult.modifiedCount === 0) {
-                throw new Error(`Failed to update spaces for lesson ${lesson._id}`);
-            }
-        }
-
-        await db.collection('orders').insertOne(order, { session });
-
-        await session.commitTransaction();
-        res.status(201).send(order);
-    } catch (error) {
-        await session.abortTransaction();
-        console.error('Failed to create order:', error);
-        res.status(500).send({ error: 'Failed to create order' });
-    } finally {
-        session.endSession();
-    }
-});
-
-// Update an object by id in a collection
-app.put('/collection/:collectionName/:id', (req, res, next) => {
-    req.collection.updateOne(
-        { _id: new ObjectID(req.params.id) },
-        { $set: req.body },
-        { safe: true, multi: false },
-        (err, result) => {
-            if (err) {
-                return next(err);
-            }
-            res.send(result.modifiedCount === 1 ? { msg: 'success' } : { msg: 'error' });
-        }
-    );
-});
-
-// Search for lessons by subject or location
-app.get('/collection/:collectionName/search', async (req, res, next) => {
-    const { subject, location } = req.query;
-    const searchCriteria = {};
-
-    if (subject) {
-        searchCriteria.subject = { $regex: subject, $options: 'i' }; // Case-insensitive search
+    if (search) {
+      search = {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { subject: { $regex: search, $options: "i" } },
+          { location: { $regex: search, $options: "i" } },
+        ],
+      };
+    } else {
+      search = {};
     }
 
-    if (location) {
-        searchCriteria.location = { $regex: location, $options: 'i' }; // Case-insensitive search
-    }
-
-    try {
-        const results = await req.collection.find(searchCriteria).toArray();
+    db.collection("lessons")
+      .find(search)
+      .sort({ [sort]: order })
+      .toArray()
+      .then((results) => {
         res.send(results);
-    } catch (err) {
-        next(err);
-    }
+      });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send({ error: 'Something went wrong!' });
+//to insert a document to the collection
+app.post("/collection/:collectionName", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .insertOne(req.body)
+      .then((results) => {
+        res.send(results);
+      });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+app.get("/collection/:collectionName/:id", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .findOne({ _id: new ObjectId(req.params.id) })
+      .then((results) => {
+        res.send(results);
+      });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+//to update a document by ID
+app.put("/collection/:collectionName/:id", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
+      .then((results) => {
+        res.send(results);
+      });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+app.delete("/collection/:collectionName/:id", (req, res) => {
+  try {
+    db.collection(req.params.collectionName)
+      .deleteOne({ _id: ObjectId(req.params.id) })
+      .then((results) => {
+        res.send(results);
+      });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Express.js server running at PORT 3000");
 });
