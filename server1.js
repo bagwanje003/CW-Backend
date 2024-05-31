@@ -1,7 +1,6 @@
 // Import dependencies modules:
 const express = require('express');
 
-
 // Create an Express.js instance:
 const app = express();
 
@@ -18,28 +17,35 @@ app.use((req, res, next) => {
 });
 
 // Connect to MongoDB
+const { MongoClient, ObjectId } = require("mongodb");
 
-app.use(express.static(__dirname + "/static"))
-
-const { MongoClient, ObjectID } = require("mongodb");
 const client = new MongoClient(
-  'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/'
+  'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/',
+  { useNewUrlParser: true, useUnifiedTopology: true }
 );
-var db = client.db('Coursework2');
+
+let db;
+client.connect()
+  .then(() => {
+    db = client.db('Coursework2');
+    console.log("Connected to MongoDB");
+  })
+  .catch(error => {
+    console.error("Failed to connect to MongoDB", error);
+  });
 
 // Logger Middleware
 app.use((req, res, next) => {
-  var log = `${req.ip} -- ${req.method} ${req.path} ${res.statusCode}"`;
+  var log = `${req.ip} -- ${req.method} ${req.path} ${res.statusCode}`;
   console.log(log, req.body);
   next();
 });
 
 app.get("/", (req, res) => {
-  // db.collection('lessons').updateMany({}, { $set: { avaliability: 5 } });
   res.send("Select a collection, e.g., /collection/lessons");
 });
 
-// retrieve all the object from an collection
+// retrieve all the object from a collection
 app.get("/collection/:collectionName", (req, res) => {
   try {
     db.collection(req.params.collectionName)
@@ -47,18 +53,21 @@ app.get("/collection/:collectionName", (req, res) => {
       .toArray()
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
 // Search
 app.post("/search/collection/lessons/", (req, res) => {
   try {
-    var search = req.body.search;
-    var sort = req.body.sort || "title";
-    var order = req.body.order == "desc" ? -1 : 1;
+    let search = req.body.search;
+    let sort = req.body.sort || "title";
+    let order = req.body.order === "desc" ? -1 : 1;
 
     if (search) {
       search = {
@@ -78,9 +87,12 @@ app.post("/search/collection/lessons/", (req, res) => {
       .toArray()
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
@@ -91,9 +103,12 @@ app.post("/collection/:collectionName", (req, res) => {
       .insertOne(req.body)
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
@@ -103,9 +118,12 @@ app.get("/collection/:collectionName/:id", (req, res) => {
       .findOne({ _id: new ObjectId(req.params.id) })
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
@@ -116,21 +134,27 @@ app.put("/collection/:collectionName/:id", (req, res) => {
       .updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
 app.delete("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
-      .deleteOne({ _id: ObjectId(req.params.id) })
+      .deleteOne({ _id: new ObjectId(req.params.id) })
       .then((results) => {
         res.send(results);
+      })
+      .catch((error) => {
+        res.status(500).send({ error: error.message });
       });
   } catch (error) {
-    console.log(error);
+    res.status(500).send({ error: error.message });
   }
 });
 
