@@ -1,5 +1,6 @@
 // Import dependencies modules:
 const express = require('express');
+const { MongoClient, ObjectId } = require("mongodb");
 
 // Create an Express.js instance:
 const app = express();
@@ -16,19 +17,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Connect to MongoDB
-const { MongoClient, ObjectId } = require("mongodb");
-
-const client = new MongoClient(
-  'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/',
-  { useNewUrlParser: true, useUnifiedTopology: true }
-);
-
+// MongoDB URI
+const uri = 'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/';
 let db;
-client.connect()
-  .then(() => {
+
+// Connect to MongoDB and start the server
+MongoClient.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(client => {
     db = client.db('Coursework2');
     console.log("Connected to MongoDB");
+
+    // Start the server only after successful connection
+    app.listen(3000, () => {
+      console.log("Express.js server running at PORT 3000");
+    });
   })
   .catch(error => {
     console.error("Failed to connect to MongoDB", error);
@@ -45,16 +47,16 @@ app.get("/", (req, res) => {
   res.send("Select a collection, e.g., /collection/lessons");
 });
 
-// retrieve all the object from a collection
+// Retrieve all objects from a collection
 app.get("/collection/:collectionName", (req, res) => {
   try {
     db.collection(req.params.collectionName)
       .find({})
       .toArray()
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
@@ -85,10 +87,10 @@ app.post("/search/collection/lessons/", (req, res) => {
       .find(search)
       .sort({ [sort]: order })
       .toArray()
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
@@ -96,15 +98,15 @@ app.post("/search/collection/lessons/", (req, res) => {
   }
 });
 
-//to insert a document to the collection
+// Insert a document into the collection
 app.post("/collection/:collectionName", (req, res) => {
   try {
     db.collection(req.params.collectionName)
       .insertOne(req.body)
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
@@ -112,14 +114,15 @@ app.post("/collection/:collectionName", (req, res) => {
   }
 });
 
+// Retrieve a document by ID
 app.get("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
       .findOne({ _id: new ObjectId(req.params.id) })
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
@@ -127,15 +130,15 @@ app.get("/collection/:collectionName/:id", (req, res) => {
   }
 });
 
-//to update a document by ID
+// Update a document by ID
 app.put("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
       .updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
@@ -143,21 +146,18 @@ app.put("/collection/:collectionName/:id", (req, res) => {
   }
 });
 
+// Delete a document by ID
 app.delete("/collection/:collectionName/:id", (req, res) => {
   try {
     db.collection(req.params.collectionName)
       .deleteOne({ _id: new ObjectId(req.params.id) })
-      .then((results) => {
+      .then(results => {
         res.send(results);
       })
-      .catch((error) => {
+      .catch(error => {
         res.status(500).send({ error: error.message });
       });
   } catch (error) {
     res.status(500).send({ error: error.message });
   }
-});
-
-app.listen(3000, () => {
-  console.log("Express.js server running at PORT 3000");
 });
