@@ -25,7 +25,7 @@ const { MongoClient, ObjectID } = require("mongodb");
 const client = new MongoClient(
   'mongodb+srv://muhammadibrahimabdallah782:Nov262003&@cluster0.5afkpqu.mongodb.net/'
 );
-var db = cllient.db('Coursework2');
+var db = client.db('Coursework2');
 
 // Logger Middleware
 app.use((req, res, next) => {
